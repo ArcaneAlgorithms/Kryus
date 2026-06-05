@@ -1108,7 +1108,7 @@
   (async () => {
     try {
       // Use fetch to get the content
-      const response = await fetch('/i.html', { cache: 'no-cache' });
+      const response = await fetch('./i.html', { cache: 'no-cache' });
       const content = await response.text();
       
       // Replace the entire document body
