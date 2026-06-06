@@ -2,24 +2,114 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Success</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kryus</title>
+    
+    <!-- Preconnect to domains for faster resolution -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Optimized preload for CSS and font resources to encourage immediate caching -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    
     <style>
         body {
-            font-family: sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #0f172a;
-            color: #f8fafc;
+            font-family: 'Lexend', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0f172a 0%, #000000 100%);
         }
-        h1 {
-            font-size: 2rem;
-            text-align: center;
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spinner {
+            animation: spin 1s linear infinite;
         }
     </style>
 </head>
-<body>
-    <h1>Congrats! You have successfully passed the Phantom Zone!</h1>
+<body class="min-h-screen flex items-center justify-center">
+
+    <div id="loading-screen" class="fixed inset-0 bg-black flex flex-col justify-center items-center z-50 transition-opacity duration-1000">
+        <div class="animate-spinner rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+        <p class="text-white mt-4 font-light tracking-wide">sorry! please wait whilst we load</p>
+    </div>
+
+    <div id="particles-js"></div>
+
+    <main class="text-center p-6 z-10">
+        <h1 class="text-5xl md:text-7xl font-bold text-white tracking-tight">
+            KRYUS v1
+        </h1>
+        <p class="text-gray-400 mt-4 text-lg md:text-xl">
+            this will be for testing
+        </p>
+    </main>
+
+    <script>
+        window.addEventListener('load', () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            setTimeout(() => {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 1000);
+            }, 1500);
+        });
+
+        particlesJS("particles-js", {
+            "particles": {
+                "number": {
+                    "value": 80,
+                    "density": {
+                        "enable": true,
+                        "value_area": 800
+                    }
+                },
+                "color": { "value": "#ffffff" },
+                "shape": {
+                    "type": "circle"
+                },
+                "opacity": {
+                    "value": 1,
+                    "random": true,
+                    "anim": { "enable": true, "speed": 1, "opacity_min": 0, "sync": false }
+                },
+                "size": {
+                    "value": 3,
+                    "random": true
+                },
+                "line_linked": { "enable": false },
+                "move": {
+                    "enable": true,
+                    "speed": 1,
+                    "out_mode": "out"
+                }
+            },
+            "interactivity": {
+                "detect_on": "canvas",
+                "events": {
+                    "onhover": { "enable": true, "mode": "bubble" },
+                    "onclick": { "enable": true, "mode": "repulse" },
+                    "resize": true
+                },
+                "modes": {
+                    "bubble": { "distance": 250, "size": 0, "duration": 2, "opacity": 0, "speed": 3 },
+                    "repulse": { "distance": 400, "duration": 0.4 }
+                }
+            },
+            "retina_detect": true
+        });
+    </script>
 </body>
 </html>
