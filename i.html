@@ -1,68 +1,573 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kryus</title>
-    
-    <!-- Preconnect to domains for faster resolution -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <!-- Optimized preload for CSS and font resources to encourage immediate caching -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
-    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <style>
         body {
             font-family: 'Lexend', sans-serif;
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background: linear-gradient(135deg, #0f172a 0%, #000000 100%);
+            transition: background-color 0.5s ease, background-image 0.5s ease;
+            user-select: none;
         }
+
+        .theme-home {
+            background-color: #000000;
+            background-image: linear-gradient(135deg, #0f172a 0%, #000000 100%);
+        }
+
+        #page-games {
+            display: block !important;
+            overflow-y: auto;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 1.5rem;
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 6rem 2rem 2rem 2rem;
+            align-items: start;
+            height: auto;
+        }
+
+        .game-card {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-weight: bold;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .game-card:hover {
+            transform: scale(1.05);
+            background: rgba(51, 65, 85, 0.8);
+            border-color: rgba(94, 234, 212, 0.5);
+            color: #ffffff;
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        #game-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 1000px;
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            /* Stacks button on top of container */
+            align-items: center;
+            /* Centers everything horizontally */
+        }
+
+        #game-frame-container {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            width: 100%;
+            height: 70vh;
+            /* Reduced slightly to ensure it doesn't hit the taskbar */
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .toolbar-top {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0 1rem;
+            background: rgba(15, 23, 42, 1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .iframe-wrapper {
+            flex-grow: 1;
+            width: 100%;
+            background: #000;
+        }
+
+        .toolbar {
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        :fullscreen .toolbar-top {
+            display: none;
+        }
+
+        :fullscreen #game-frame-container {
+            height: 100vh !important;
+        }
+
+        .fallback-placeholder {
+            width: 100%;
+            height: 100%;
+            background-color: #333;
+            color: white;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .theme-default {
+            background-color: #030712;
+            background-image: none;
+        }
+
         #particles-js {
             position: absolute;
             width: 100%;
             height: 100%;
             z-index: -1;
+            transition: opacity 1s ease;
         }
+
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
+
         .animate-spinner {
             animation: spin 1s linear infinite;
         }
+
+        #taskbar-container {
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #toggle-handle {
+            transition: opacity 0.3s ease;
+        }
+
+        .fade-out {
+            opacity: 0 !important;
+            pointer-events: none;
+        }
+
+        .fade-in {
+            opacity: 1 !important;
+            pointer-events: auto;
+        }
+
+        .page {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .page.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 2rem 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+            max-width: 480px;
+            width: 90%;
+            text-align: left;
+            color: #ffffff;
+        }
+
+        .fancy {
+            background: linear-gradient(135deg, #5eead4 0%, #a7f3d0 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        .card h1 {
+            font-size: 2.25rem;
+            margin: 0 0 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .card h1 svg {
+            stroke: #5eead4;
+            width: 1.75rem;
+            height: 1.75rem;
+            flex-shrink: 0;
+        }
+
+        .card h2 svg {
+            stroke: #94a3b8;
+            width: 1.2rem;
+            height: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            margin: 0 0 0.75rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 2px solid;
+            border-image: linear-gradient(90deg, #5eead4, #2dd4bf, transparent) 1;
+        }
+
+        .credits-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .credits-list li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 0.75rem;
+        }
+
+        .credits-list li strong {
+            font-size: 1.05rem;
+        }
+
+        .credits-list li span {
+            font-size: 0.95rem;
+            color: #94a3b8;
+        }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center">
 
-    <div id="loading-screen" class="fixed inset-0 bg-black flex flex-col justify-center items-center z-50 transition-opacity duration-1000">
+<body class="min-h-screen flex items-center justify-center theme-home">
+
+    <div id="loading-screen"
+        class="fixed inset-0 bg-black flex flex-col justify-center items-center z-50 transition-opacity duration-1000">
         <div class="animate-spinner rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
         <p class="text-white mt-4 font-light tracking-wide">sorry! please wait whilst we load</p>
     </div>
 
     <div id="particles-js"></div>
 
-    <!-- Bottom Left Live Clock -->
-    <div id="live-clock" class="fixed bottom-4 left-4 text-white text-base md:text-lg z-20 font-medium">
-        --:--:-- | --- -, ----
+    <div id="ui-container">
+        <div id="page-home" class="page active">
+            <div id="live-clock" class="fixed bottom-4 left-4 text-white text-base md:text-lg z-20 font-medium"></div>
+
+            <main id="main-content" class="text-center p-6 z-10">
+                <h1 class="text-5xl md:text-7xl font-bold text-white tracking-tight">KRYUS v1</h1>
+                <p id="splash-text" class="text-gray-400 mt-4 text-lg md:text-xl">Oops, the caption system failed. Like
+                    for real.</p>
+            </main>
+        </div>
+
+        <div id="page-credits" class="page">
+            <div class="card">
+                <h1 class="fancy"><i data-lucide="heart"></i> Credits</h1>
+                <h2><i data-lucide="users"></i> Team</h2>
+                <ul class="credits-list">
+                    <li>
+                        <strong class="fancy">d4rkn1ght</strong>
+                        <span>Owner + Developer</span>
+                    </li>
+                    <h2 style="margin-top: 30px;"><i data-lucide="arrow-down-to-line"></i> Sources</h2>
+                    <ul class="credits-list">
+                        <li>
+                            <strong class="fancy">UGS</strong>
+                            <span>Game Source</span>
+                        </li>
+                    </ul>
+            </div>
+        </div>
+        <div id="page-games" class="page">
+            <div class="games-grid" id="games-grid"></div>
+            <div id="game-wrapper" class="hidden flex flex-col items-center">
+                <button onclick="closeGame()"
+                    class="mb-4 text-sm px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition text-white">
+                    Go Back
+                </button>
+                <div id="game-frame-container" class="flex flex-col">
+                    <div class="iframe-wrapper">
+                        <iframe id="game-iframe" class="w-full h-full border-none"></iframe>
+                    </div>
+                    <div class="toolbar text-white">
+                        <span id="game-title" class="font-bold text-white ml-4">Game Title</span>
+                        <button onclick="toggleFullscreen()" id="fs-btn"
+                            class="p-1 hover:bg-white/20 rounded-lg transition">
+                            <i data-lucide="maximize" id="fs-icon" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <main class="text-center p-6 z-10">
-        <h1 class="text-5xl md:text-7xl font-bold text-white tracking-tight">
-            KRYUS v1
-        </h1>
-        <p class="text-gray-400 mt-4 text-lg md:text-xl">
-            this will be for testing
-        </p>
-    </main>
+    <div id="taskbar-container" class="fixed bottom-8 z-30 flex flex-col items-center">
+        <div
+            class="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-2 flex items-center gap-3 shadow-2xl">
+            <div class="relative group">
+                <div
+                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-1 bg-black/60 backdrop-blur-md border border-white/10 text-white text-sm rounded-lg opacity-0 invisible transition-all duration-300 group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 pointer-events-none whitespace-nowrap">
+                    Home
+                </div>
+                <button id="btn-home" onclick="setView('home')"
+                    class="text-white p-2 hover:bg-white/10 rounded-xl transition-all">
+                    <i data-lucide="home" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="relative group">
+                <div
+                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-1 bg-black/60 backdrop-blur-md border border-white/10 text-white text-sm rounded-lg opacity-0 invisible transition-all duration-300 group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 pointer-events-none whitespace-nowrap">
+                    Games
+                </div>
+                <button id="btn-games" onclick="setView('games')"
+                    class="text-white p-2 hover:bg-white/10 rounded-xl transition-all">
+                    <i data-lucide="gamepad-2" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="relative group">
+                <div
+                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-1 bg-black/60 backdrop-blur-md border border-white/10 text-white text-sm rounded-lg opacity-0 invisible transition-all duration-300 group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 pointer-events-none whitespace-nowrap">
+                    Credits
+                </div>
+                <button id="btn-credits" onclick="setView('credits')"
+                    class="text-white p-2 hover:bg-white/10 rounded-xl transition-all">
+                    <i data-lucide="users" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="w-px h-8 bg-white/20"></div>
+
+            <div class="relative group">
+                <div
+                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-1 bg-black/60 backdrop-blur-md border border-white/10 text-white text-sm rounded-lg opacity-0 invisible transition-all duration-300 group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 pointer-events-none whitespace-nowrap">
+                    Collapse</div>
+                <button onclick="toggleTaskbar(false)"
+                    class="text-white p-2 hover:bg-white/10 rounded-xl transition-all">
+                    <i data-lucide="chevron-down" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <button id="toggle-handle" onclick="toggleTaskbar(true)"
+        class="fixed bottom-4 z-30 text-white bg-black/40 backdrop-blur-md border border-white/10 p-2 rounded-full opacity-0 pointer-events-none transition-all hover:bg-white/20">
+        <i data-lucide="chevron-up" class="w-6 h-6"></i>
+    </button>
 
     <script>
-        // Update clock every second
+        lucide.createIcons();
+
+        const splashes = [
+            "We know you're at school. We won't tell.",
+            "psst. your teacher's behind you",
+            "404: Productivity not found.",
+            "School filters are just aggressive suggestions.",
+            "Your school: 0, Kryus: 1.",
+            "This website is probably not allowed.",
+            "Education is important, but fun is importanter.",
+            "Powered by praying and debugging",
+            "Actually, it's not a bug, it's a feature.",
+            "Warning: may cause productivity loss",
+            "You're actually reading these? Nice.",
+            "Your teacher called, they want their work now. We know it's unfinished. :)",
+            "Shhh, your teacher doesn't need to know about this.",
+            "Made with hopes, coding and a hell of a lot of fixing.",
+            "Skill issue detected.",
+            "Does this game make me look like I'm working?",
+            "I'm not saying it's magic, but it's basically magic.",
+            "I'm legally obligated to say I'm for educational purposes.",
+            "Your academic future is currently in this tab."
+        ];
+
+        const games = [
+            { title: "Subway Surfers", gurl: "https://bingsaassets.github.io/vuna./assets/Subway%20Surfers/frame.html", iurl: "./assets/games/Subway Surfers/image.webp" }
+        ];
+
+        function launchgame(title, url) {
+            const grid = document.getElementById('games-grid');
+            const wrapper = document.getElementById('game-wrapper');
+            const container = document.getElementById('game-frame-container');
+            const iframe = document.getElementById('game-iframe');
+            const titleSpan = document.getElementById('game-title');
+            grid.classList.add('hidden');
+            wrapper.classList.remove('hidden');
+            iframe.src = url;
+            titleSpan.textContent = title;
+            lucide.createIcons();
+        }
+
+        function closeGame() {
+            const grid = document.getElementById('games-grid');
+            const wrapper = document.getElementById('game-wrapper');
+            const iframe = document.getElementById('game-iframe');
+            grid.classList.remove('hidden');
+            wrapper.classList.add('hidden');
+            iframe.src = '';
+        }
+
+        function rendergames() {
+            const grid = document.querySelector('.games-grid');
+            if (!grid) return;
+
+            grid.innerHTML = games.map(game => `
+                <div class="game-card" 
+                     onclick="launchgame('${game.title}','${game.gurl}')" 
+                     style="position: relative; cursor: pointer; overflow: hidden; border-radius: 12px; width: 100%;">
+                    <img 
+                        src="${game.iurl}" 
+                        alt="${game.title}"
+                        style="display: block; width: 100%; height: 100%; object-fit: cover;" 
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    >
+                    <div class="fallback-title" style="display: none; align-items: center; justify-content: center; width: 100%; height: 100%; position: absolute; top: 0; left: 0;">
+                        ${game.title}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleFullscreen() {
+            const container = document.getElementById('game-frame-container');
+            const icon = document.getElementById('fs-icon');
+
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().catch(err => alert(`Error: ${err.message}`));
+                container.style.position = 'fixed';
+                container.style.width = '100vw';
+                container.style.height = '100vh';
+                container.style.borderRadius = '0';
+                icon.setAttribute('data-lucide', 'minimize');
+            } else {
+                document.exitFullscreen();
+                container.style.position = "";
+                container.style.height = "";
+                container.style.width = '90%';
+                container.style.borderRadius = '1rem';
+                icon.setAttribute('data-lucide', 'maximize');
+            }
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            const container = document.getElementById('game-frame-container');
+            const icon = document.getElementById('fs-icon');
+
+            if (!document.fullscreenElement) {
+                container.style.position = "";
+                container.style.height = "";
+                container.style.width = '90%';
+                container.style.borderRadius = '1rem';
+                icon.setAttribute('data-lucide', 'maximize');
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }
+        });
+
+        function updateSplash() {
+            const splashText = document.getElementById('splash-text');
+            if (splashText && splashes.length > 0) {
+                const randomIndex = Math.floor(Math.random() * splashes.length);
+                splashText.innerHTML = splashes[randomIndex];
+            }
+        }
+
+        let currentView = 'home';
+        const viewConfig = {
+            home: { theme: 'theme-home' },
+            games: { theme: 'theme-default' },
+            credits: { theme: 'theme-default' }
+        };
+
+        function setView(view) {
+            if (view === currentView) return;
+            const particles = document.getElementById('particles-js');
+            const config = viewConfig[view];
+            if (!config) return;
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.getElementById(`page-${view}`).classList.add('active');
+            document.querySelectorAll('[id^="btn-"]').forEach(btn => btn.classList.remove('bg-white/20'));
+            document.getElementById(`btn-${view}`).classList.add('bg-white/20');
+            document.body.className = `min-h-screen flex items-center justify-center ${config.theme}`;
+            if (view === 'home') {
+                particles.classList.remove('fade-out');
+            } else {
+                particles.classList.add('fade-out');
+            }
+            currentView = view;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const initBtn = document.getElementById(`btn-${currentView}`);
+            if (initBtn) initBtn.classList.add('bg-white/20');
+
+            rendergames();
+        });
+
+        function toggleTaskbar(show) {
+            const container = document.getElementById('taskbar-container');
+            const handle = document.getElementById('toggle-handle');
+            if (show) {
+                container.style.transform = 'translateY(0)';
+                handle.style.opacity = '0';
+                handle.style.pointerEvents = 'none';
+            } else {
+                container.style.transform = 'translateY(150%)';
+                handle.style.opacity = '1';
+                handle.style.pointerEvents = 'auto';
+            }
+        }
+
         function updateClock() {
             const now = new Date();
             const time = now.toLocaleTimeString('en-GB', { hour12: false });
@@ -73,58 +578,20 @@
         updateClock();
 
         window.addEventListener('load', () => {
+            updateSplash();
             const loadingScreen = document.getElementById('loading-screen');
             setTimeout(() => {
                 loadingScreen.style.opacity = '0';
-                setTimeout(() => {
-                    loadingScreen.style.display = 'none';
-                }, 1000);
+                setTimeout(() => { loadingScreen.style.display = 'none'; }, 1000);
             }, 1500);
         });
 
         particlesJS("particles-js", {
-            "particles": {
-                "number": {
-                    "value": 80,
-                    "density": {
-                        "enable": true,
-                        "value_area": 800
-                    }
-                },
-                "color": { "value": "#ffffff" },
-                "shape": {
-                    "type": "circle"
-                },
-                "opacity": {
-                    "value": 1,
-                    "random": true,
-                    "anim": { "enable": true, "speed": 1, "opacity_min": 0, "sync": false }
-                },
-                "size": {
-                    "value": 3,
-                    "random": true
-                },
-                "line_linked": { "enable": false },
-                "move": {
-                    "enable": true,
-                    "speed": 1,
-                    "out_mode": "out"
-                }
-            },
-            "interactivity": {
-                "detect_on": "canvas",
-                "events": {
-                    "onhover": { "enable": true, "mode": "bubble" },
-                    "onclick": { "enable": true, "mode": "repulse" },
-                    "resize": true
-                },
-                "modes": {
-                    "bubble": { "distance": 250, "size": 0, "duration": 2, "opacity": 0, "speed": 3 },
-                    "repulse": { "distance": 400, "duration": 0.4 }
-                }
-            },
+            "particles": { "number": { "value": 80, "density": { "enable": true, "value_area": 800 } }, "color": { "value": "#ffffff" }, "shape": { "type": "circle" }, "opacity": { "value": 1, "random": true, "anim": { "enable": true, "speed": 1, "opacity_min": 0, "sync": false } }, "size": { "value": 3, "random": true }, "line_linked": { "enable": false }, "move": { "enable": true, "speed": 1, "out_mode": "out" } },
+            "interactivity": { "detect_on": "canvas", "events": { "onhover": { "enable": true, "mode": "bubble" }, "onclick": { "enable": true, "mode": "repulse" }, "resize": true }, "modes": { "bubble": { "distance": 250, "size": 0, "duration": 2, "opacity": 0, "speed": 3 }, "repulse": { "distance": 400, "duration": 0.4 } } },
             "retina_detect": true
         });
     </script>
 </body>
+
 </html>
