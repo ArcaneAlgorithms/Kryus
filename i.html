@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         body {
@@ -297,7 +298,10 @@
 
     <div id="ui-container">
         <div id="page-home" class="page active">
-            <div id="live-clock" class="fixed bottom-4 left-4 text-white text-base md:text-lg z-20 font-medium"></div>
+            <div class="fixed bottom-4 left-4 z-20">
+                <div id="user-count" class="text-white text-sm font-medium">User Count: 0</div>
+                <div id="live-clock" class="text-white text-base md:text-lg font-medium"></div>
+            </div>
 
             <main id="main-content" class="text-center p-6 z-10">
                 <h1 class="text-5xl md:text-7xl font-bold text-white tracking-tight">KRYUS v1</h1>
@@ -550,8 +554,33 @@
         document.addEventListener('DOMContentLoaded', () => {
             const initBtn = document.getElementById(`btn-${currentView}`);
             if (initBtn) initBtn.classList.add('bg-white/20');
-
             rendergames();
+            const SUPABASE_URL = 'https://ddhdaykxgqegwvveqmuo.supabase.co';
+            const SUPABASE_ANON_KEY = 'sb_publishable_ROaalJbwDEfyT_sNTowbkw_jVJnPzPN';
+            if (window.supabase) {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const channel = supabase.channel('online-users', {
+                    config: {
+                        presence: {
+                            key: 'user-' + Math.random().toString(36).substr(2, 9),
+                        },
+                    },
+                });
+
+                channel.on('presence', { event: 'sync' }, () => {
+                    const state = channel.presenceState();
+                    const count = Object.keys(state).length;
+                    const countEl = document.getElementById('user-count');
+                    if (countEl) countEl.innerText = 'User Count: ' + count;
+                })
+                    .subscribe(async (status) => {
+                        if (status === 'SUBSCRIBED') {
+                            await channel.track({
+                                online_at: new Date().toISOString(),
+                            });
+                        }
+                    });
+            }
         });
 
         function toggleTaskbar(show) {
