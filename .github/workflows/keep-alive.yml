@@ -14,4 +14,4 @@ jobs:
         run: |
           curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
           -H "apikey: ${{ secrets.SUPABASE_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_KEY }}"
