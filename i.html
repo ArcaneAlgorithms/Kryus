@@ -432,12 +432,12 @@
                 forFrameDocument(frame, (frameWindow, frameDocument) => {
                     reached = true;
                     frameWindow.__truffledMuted = muted;
+
                     patchAudioContext(frameWindow);
                     patchMediaPlayback(frameWindow);
                     muteMedia(frameDocument, muted);
                     muteKnownAudioGlobals(frameWindow, muted);
 
-                    // Observe DOM changes inside the frame so we catch dynamically added elements instantly without lagging
                     observeFrameDOM(frameWindow, frameDocument);
 
                     for (const childFrame of frameDocument.querySelectorAll("iframe")) {
@@ -447,7 +447,6 @@
                 return reached;
             }
 
-            // Use MutationObserver instead of a continuous setInterval loop to prevent lag
             function observeFrameDOM(frameWindow, frameDocument) {
                 if (frameDocument.__truffledObserved) return;
                 frameDocument.__truffledObserved = true;
@@ -459,7 +458,6 @@
                             muteMedia(frameDocument, true);
                             muteKnownAudioGlobals(frameWindow, true);
 
-                            // Check for newly added iframes
                             for (const node of mutation.addedNodes) {
                                 if (node.tagName === 'IFRAME') {
                                     muteTree(node, true);
@@ -511,6 +509,7 @@
                         mediaPrototype.play.__truffledWrapped = true;
                     }
                 } catch (error) { }
+
                 try {
                     const OriginalAudio = frameWindow.Audio;
                     if (typeof OriginalAudio === "function" && !OriginalAudio.__truffledWrapped) {
@@ -531,8 +530,28 @@
                 if (frameWindow.__truffledAudioPatched) return;
                 frameWindow.__truffledAudioPatched = true;
                 frameWindow.__truffledAudioContexts = frameWindow.__truffledAudioContexts || [];
+
                 wrapContext(frameWindow, "AudioContext");
                 wrapContext(frameWindow, "webkitAudioContext");
+
+                // NEW: Intercept the resume() method on AudioContext so clicking the game doesn't unmute it
+                try {
+                    const BaseAudioContext = frameWindow.BaseAudioContext || frameWindow.AudioContext || frameWindow.webkitAudioContext;
+                    if (BaseAudioContext && BaseAudioContext.prototype) {
+                        const proto = BaseAudioContext.prototype;
+                        const originalResume = proto.resume;
+                        if (typeof originalResume === 'function' && !originalResume.__truffledWrapped) {
+                            proto.resume = function (...args) {
+                                if (frameWindow.__truffledMuted) {
+                                    // Return a fake resolved promise to prevent the game from throwing errors
+                                    return Promise.resolve();
+                                }
+                                return originalResume.apply(this, args);
+                            };
+                            proto.resume.__truffledWrapped = true;
+                        }
+                    }
+                } catch (error) { }
             }
 
             function wrapContext(frameWindow, key) {
