@@ -336,7 +336,12 @@
                 </button>
                 <div id="game-frame-container" class="flex flex-col">
                     <div class="iframe-wrapper">
-                        <iframe id="game-iframe" class="w-full h-full border-none" allow="fullscreen; autoplay; pointer-lock; gamepad; clipboard-write; clipboard-read; midi; encrypted-media; speaker-selection"></iframe>
+                        <iframe 
+                              id="game-iframe" 
+                              class="w-full h-full border-none" 
+                              sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-popups allow-modals"
+                              allow="fullscreen; autoplay; pointer-lock; gamepad; clipboard-write; clipboard-read; midi; encrypted-media; speaker-selection">
+                        </iframe>
                     </div>
                     <div class="toolbar text-white">
                         <span id="game-title" class="font-bold text-white">Game Title</span>
@@ -385,12 +390,9 @@
                     <i data-lucide="users" class="w-6 h-6"></i>
                 </button>
             </div>
-
             <div class="w-px h-8 bg-white/20"></div>
-
             <div class="relative group">
-                <div
-                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-1 bg-black/60 backdrop-blur-md border border-white/10 text-white text-sm rounded-lg opacity-0 invisible transition-all duration-300 group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 pointer-events-none whitespace-nowrap">
+                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-1 bg-black/60 backdrop-blur-md border border-white/10 text-white text-sm rounded-lg opacity-0 invisible transition-all duration-300 group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 pointer-events-none whitespace-nowrap">
                     Collapse</div>
                 <button onclick="toggleTaskbar(false)"
                     class="text-white p-2 hover:bg-white/10 rounded-xl transition-all">
