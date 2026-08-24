@@ -451,24 +451,10 @@
                 if (frameDocument.__truffledObserved) return;
                 frameDocument.__truffledObserved = true;
 
-                const observer = new MutationObserver((mutations) => {
+                const observer = new MutationObserver(() => {
                     if (!frameWindow.__truffledMuted) return;
-                    for (const mutation of mutations) {
-                        if (mutation.addedNodes.length > 0) {
-                            muteMedia(frameDocument, true);
-                            muteKnownAudioGlobals(frameWindow, true);
-
-                            for (const node of mutation.addedNodes) {
-                                if (node.tagName === 'IFRAME') {
-                                    muteTree(node, true);
-                                } else if (node.querySelectorAll) {
-                                    for (const childFrame of node.querySelectorAll("iframe")) {
-                                        muteTree(childFrame, true);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    muteMedia(frameDocument, true);
+                    muteKnownAudioGlobals(frameWindow, true);
                 });
 
                 observer.observe(frameDocument.body || frameDocument.documentElement, {
@@ -487,6 +473,7 @@
                 if (muted) {
                     if (!element.muted) element.dataset.truffledMuted = "true";
                     element.muted = true;
+                    element.volume = 0;
                     return;
                 }
                 if (element.dataset.truffledMuted === "true") {
@@ -509,21 +496,6 @@
                         mediaPrototype.play.__truffledWrapped = true;
                     }
                 } catch (error) { }
-
-                try {
-                    const OriginalAudio = frameWindow.Audio;
-                    if (typeof OriginalAudio === "function" && !OriginalAudio.__truffledWrapped) {
-                        function WrappedAudio(...args) {
-                            const audio = new OriginalAudio(...args);
-                            if (frameWindow.__truffledMuted) muteMediaElement(audio, true);
-                            return audio;
-                        }
-                        WrappedAudio.prototype = OriginalAudio.prototype;
-                        Object.setPrototypeOf(WrappedAudio, OriginalAudio);
-                        WrappedAudio.__truffledWrapped = true;
-                        frameWindow.Audio = WrappedAudio;
-                    }
-                } catch (error) { }
             }
 
             function patchAudioContext(frameWindow) {
@@ -534,21 +506,34 @@
                 wrapContext(frameWindow, "AudioContext");
                 wrapContext(frameWindow, "webkitAudioContext");
 
-                // NEW: Intercept the resume() method on AudioContext so clicking the game doesn't unmute it
+                // Force-suspend and zero out gain nodes on any active audio context continuously if muted
                 try {
                     const BaseAudioContext = frameWindow.BaseAudioContext || frameWindow.AudioContext || frameWindow.webkitAudioContext;
                     if (BaseAudioContext && BaseAudioContext.prototype) {
                         const proto = BaseAudioContext.prototype;
+
                         const originalResume = proto.resume;
                         if (typeof originalResume === 'function' && !originalResume.__truffledWrapped) {
                             proto.resume = function (...args) {
                                 if (frameWindow.__truffledMuted) {
-                                    // Return a fake resolved promise to prevent the game from throwing errors
                                     return Promise.resolve();
                                 }
                                 return originalResume.apply(this, args);
                             };
                             proto.resume.__truffledWrapped = true;
+                        }
+
+                        // Intercept createGain to force volume to 0 if muted
+                        const originalCreateGain = proto.createGain;
+                        if (typeof originalCreateGain === 'function' && !originalCreateGain.__truffledWrapped) {
+                            proto.createGain = function (...args) {
+                                const gainNode = originalCreateGain.apply(this, args);
+                                if (frameWindow.__truffledMuted) {
+                                    try { gainNode.gain.value = 0; } catch (e) { }
+                                }
+                                return gainNode;
+                            };
+                            proto.createGain.__truffledWrapped = true;
                         }
                     }
                 } catch (error) { }
@@ -562,7 +547,9 @@
                         const context = new Original(...args);
                         if (!frameWindow.__truffledAudioContexts.includes(context)) {
                             frameWindow.__truffledAudioContexts.push(context);
-                            if (frameWindow.__truffledMuted) setContextMuted(context, true);
+                        }
+                        if (frameWindow.__truffledMuted) {
+                            setContextMuted(context, true);
                         }
                         return context;
                     }
@@ -589,17 +576,34 @@
             }
 
             function setContextMuted(context, muted) {
-                if (!context || typeof context.suspend !== "function" || typeof context.resume !== "function") return;
+                if (!context) return;
                 try {
-                    if (muted && context.state !== "closed") {
-                        context.__truffledSuspended = true;
-                        context.suspend().catch?.(() => { });
-                    } else if (!muted && context.__truffledSuspended && context.state !== "closed") {
-                        context.__truffledSuspended = false;
-                        context.resume().catch?.(() => { });
+                    if (muted) {
+                        if (typeof context.suspend === "function" && context.state !== "closed") {
+                            context.suspend().catch?.(() => { });
+                        }
+                    } else {
+                        if (typeof context.resume === "function" && context.state !== "closed") {
+                            context.resume().catch?.(() => { });
+                        }
                     }
                 } catch (error) { }
             }
+
+            // Continuous background loop using requestAnimationFrame for zero-lag enforcement
+            function constantLoop() {
+                const iframe = document.getElementById('game-iframe');
+                if (iframe) {
+                    forFrameDocument(iframe, (frameWindow, frameDocument) => {
+                        if (frameWindow.__truffledMuted) {
+                            muteMedia(frameDocument, true);
+                            muteKnownAudioGlobals(frameWindow, true);
+                        }
+                    });
+                }
+                requestAnimationFrame(constantLoop);
+            }
+            requestAnimationFrame(constantLoop);
 
             window.forceMuteFrame = function (frame, muted) {
                 muteTree(frame, muted);
