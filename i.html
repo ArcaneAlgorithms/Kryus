@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -336,19 +337,24 @@
                 </button>
                 <div id="game-frame-container" class="flex flex-col">
                     <div class="iframe-wrapper">
-                        <iframe 
-                              id="game-iframe" 
-                              class="w-full h-full border-none" 
-                              sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-popups allow-modals"
-                              allow="fullscreen; autoplay; pointer-lock; gamepad; clipboard-write; clipboard-read; midi; encrypted-media; speaker-selection">
+                        <iframe id="game-iframe" class="w-full h-full border-none"
+                            onload="applyMuteState()"
+                            sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-popups allow-modals"
+                            allow="fullscreen; autoplay; pointer-lock; gamepad; clipboard-write; clipboard-read; midi; encrypted-media; speaker-selection">
                         </iframe>
                     </div>
                     <div class="toolbar text-white">
                         <span id="game-title" class="font-bold text-white">Game Title</span>
-                        <button onclick="toggleFullscreen()" id="fs-btn"
-                            class="p-1 hover:bg-white/20 rounded-lg transition">
-                            <i data-lucide="maximize" id="fs-icon" class="w-5 h-5"></i>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleMute()" id="mute-btn"
+                                class="p-1 hover:bg-white/20 rounded-lg transition">
+                                <i data-lucide="volume-2" id="mute-icon" class="w-5 h-5"></i>
+                            </button>
+                            <button onclick="toggleFullscreen()" id="fs-btn"
+                                class="p-1 hover:bg-white/20 rounded-lg transition">
+                                <i data-lucide="maximize" id="fs-icon" class="w-5 h-5"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -392,7 +398,8 @@
             </div>
             <div class="w-px h-8 bg-white/20"></div>
             <div class="relative group">
-                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-1 bg-black/60 backdrop-blur-md border border-white/10 text-white text-sm rounded-lg opacity-0 invisible transition-all duration-300 group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 pointer-events-none whitespace-nowrap">
+                <div
+                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 px-3 py-1 bg-black/60 backdrop-blur-md border border-white/10 text-white text-sm rounded-lg opacity-0 invisible transition-all duration-300 group-hover:opacity-100 group-hover:visible group-hover:-translate-y-2 pointer-events-none whitespace-nowrap">
                     Collapse</div>
                 <button onclick="toggleTaskbar(false)"
                     class="text-white p-2 hover:bg-white/10 rounded-xl transition-all">
@@ -408,6 +415,167 @@
     </button>
 
     <script>
+        (function () {
+          function forFrameDocument(frame, callback) {
+            try {
+              const frameWindow = frame.contentWindow;
+              const frameDocument = frame.contentDocument || frameWindow.document;
+              if (!frameWindow || !frameDocument) return false;
+              callback(frameWindow, frameDocument);
+              return true;
+            } catch (error) {
+              return false;
+            }
+          }
+
+          function muteTree(frame, muted) {
+            let reached = false;
+            forFrameDocument(frame, (frameWindow, frameDocument) => {
+              reached = true;
+              frameWindow.__truffledMuted = muted;
+              patchAudioContext(frameWindow);
+              patchMediaPlayback(frameWindow);
+              muteMedia(frameDocument, muted);
+              muteKnownAudioGlobals(frameWindow, muted);
+              for (const childFrame of frameDocument.querySelectorAll("iframe")) {
+                reached = muteTree(childFrame, muted) || reached;
+              }
+            });
+            return reached;
+          }
+
+          function muteMedia(frameDocument, muted) {
+            for (const element of frameDocument.querySelectorAll("audio, video")) {
+              muteMediaElement(element, muted);
+            }
+          }
+
+          function muteMediaElement(element, muted) {
+            if (muted) {
+              if (!element.muted) element.dataset.truffledMuted = "true";
+              element.muted = true;
+              return;
+            }
+            if (element.dataset.truffledMuted === "true") {
+              element.muted = false;
+              delete element.dataset.truffledMuted;
+            }
+          }
+
+          function patchMediaPlayback(frameWindow) {
+            if (frameWindow.__truffledMediaPatched) return;
+            frameWindow.__truffledMediaPatched = true;
+            try {
+              const mediaPrototype = frameWindow.HTMLMediaElement?.prototype;
+              const originalPlay = mediaPrototype?.play;
+              if (typeof originalPlay === "function" && !originalPlay.__truffledWrapped) {
+                mediaPrototype.play = function (...args) {
+                  if (frameWindow.__truffledMuted) muteMediaElement(this, true);
+                  return originalPlay.apply(this, args);
+                };
+                mediaPrototype.play.__truffledWrapped = true;
+              }
+            } catch (error) {}
+            try {
+              const OriginalAudio = frameWindow.Audio;
+              if (typeof OriginalAudio === "function" && !OriginalAudio.__truffledWrapped) {
+                function WrappedAudio(...args) {
+                  const audio = new OriginalAudio(...args);
+                  if (frameWindow.__truffledMuted) muteMediaElement(audio, true);
+                  return audio;
+                }
+                WrappedAudio.prototype = OriginalAudio.prototype;
+                Object.setPrototypeOf(WrappedAudio, OriginalAudio);
+                WrappedAudio.__truffledWrapped = true;
+                frameWindow.Audio = WrappedAudio;
+              }
+            } catch (error) {}
+          }
+
+          function patchAudioContext(frameWindow) {
+            if (frameWindow.__truffledAudioPatched) return;
+            frameWindow.__truffledAudioPatched = true;
+            frameWindow.__truffledAudioContexts = frameWindow.__truffledAudioContexts || [];
+            wrapContext(frameWindow, "AudioContext");
+            wrapContext(frameWindow, "webkitAudioContext");
+          }
+
+          function wrapContext(frameWindow, key) {
+            const Original = frameWindow[key];
+            if (typeof Original !== "function" || Original.__truffledWrapped) return;
+            try {
+              function WrappedContext(...args) {
+                const context = new Original(...args);
+                if (!frameWindow.__truffledAudioContexts.includes(context)) {
+                  frameWindow.__truffledAudioContexts.push(context);
+                  if (frameWindow.__truffledMuted) setContextMuted(context, true);
+                }
+                return context;
+              }
+              WrappedContext.prototype = Original.prototype;
+              Object.setPrototypeOf(WrappedContext, Original);
+              WrappedContext.__truffledWrapped = true;
+              frameWindow[key] = WrappedContext;
+            } catch (error) {}
+          }
+
+          function muteKnownAudioGlobals(frameWindow, muted) {
+            try { frameWindow.Howler?.mute?.(muted); } catch (error) {}
+            const contexts = [
+              frameWindow.audioContext,
+              frameWindow.Module?.audioContext,
+              frameWindow.Module?.SDL2?.audioContext,
+              frameWindow.unityInstance?.Module?.audioContext,
+              frameWindow.unityInstance?.Module?.SDL2?.audioContext,
+              ...(frameWindow.__truffledAudioContexts || []),
+            ];
+            for (const context of contexts) {
+              setContextMuted(context, muted);
+            }
+          }
+
+          function setContextMuted(context, muted) {
+            if (!context || typeof context.suspend !== "function" || typeof context.resume !== "function") return;
+            try {
+              if (muted && context.state !== "closed") {
+                context.__truffledSuspended = true;
+                context.suspend().catch?.(() => {});
+              } else if (!muted && context.__truffledSuspended && context.state !== "closed") {
+                context.__truffledSuspended = false;
+                context.resume().catch?.(() => {});
+              }
+            } catch (error) {}
+          }
+
+          // Usage: Pass your iframe element and true/false
+          window.forceMuteFrame = function(frame, muted) {
+            muteTree(frame, muted);
+          };
+        })();
+
+        let isMuted = false;
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            const muteIcon = document.getElementById('mute-icon');
+            if (isMuted) {
+                muteIcon.setAttribute('data-lucide', 'volume-x');
+            } else {
+                muteIcon.setAttribute('data-lucide', 'volume-2');
+            }
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+            applyMuteState();
+        }
+
+        function applyMuteState() {
+            const iframe = document.getElementById('game-iframe');
+            if (iframe && typeof window.forceMuteFrame === 'function') {
+                window.forceMuteFrame(iframe, isMuted);
+            }
+        }
+
         lucide.createIcons();
 
         const splashes = [
