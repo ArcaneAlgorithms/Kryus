@@ -2,12 +2,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<style>
-  html { 
-    visibility: hidden; 
-    background-colour: #000000;
-  }
-</style>
   <div style="display: none" aria-hidden="true">
       <h1>Educational Resources and Online Learning Platform</h1>
       <p>
@@ -67,7 +61,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>St. Jude’s International | Leadership & Legacy</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600&display=swap');
+      html { 
+        background-color: #000000;
+      }
+      body {
+        display: none;
+      }
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600&display=swap');
         :root {
             --emerald: #064e3b;
             --gold: #b45309;
@@ -76,13 +76,7 @@
             --soft-white: #ffffff;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--ivory);
-            color: var(--charcoal);
-            line-height: 1.8;
-            overflow-x: hidden;
-        }
+        /* The body is hidden via display: none; above */
         nav {
             position: absolute;
             top: 0; width: 100%;
@@ -114,7 +108,7 @@
             height: 100vh;
             background-color: var(--emerald); /* Fallback */
             background-image: linear-gradient(rgba(6, 78, 59, 1), rgba(6, 78, 59, 0.6)), 
-                  url('https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?q=80&w=869&auto=format&fit=crop');
+                url('https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?q=80&w=869&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
             display: flex;
@@ -208,6 +202,7 @@
             .hero h1 { font-size: 3.5rem; }
         }
     </style>
+</head>
 </head>
 <body>
 
