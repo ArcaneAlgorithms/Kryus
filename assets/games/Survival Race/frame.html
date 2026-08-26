@@ -100,8 +100,19 @@
       var cloudSaves = 'noData';
       function SaveCloud(jsonData, flush) {}
       function LoadCloud(sendback) {}
-      var environmentData = 'null';
-      function RequestingEnvironmentData(sendback) {}
+// Mock Yandex environment data telling the game the language is English
+var environmentData = JSON.stringify({
+  app: { id: "1" },
+  browser: { lang: "en" },
+  environment: { browserLang: "en", lang: "en", tld: "com", payload: "" }
+});
+
+function RequestingEnvironmentData(sendback) {
+  // If the Unity game requests environment data, send the English config back
+  if (myGameInstance != null) {
+    myGameInstance.SendMessage(sendback, "SetEnvironmentData", environmentData);
+  }
+}
       var playerData = 'noData';
       function InitPlayer(sendback) {}
 
